@@ -11,15 +11,15 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
 
         self.conv_layers = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, padding=1),
+            nn.Conv2d(1, 32, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2,2),
 
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.Conv2d(32, 64, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2,2),
 
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.Conv2d(64, 128, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2,2)
         )
@@ -39,56 +39,46 @@ class CNN(nn.Module):
 
 # Load trained model
 model = CNN()
-model.load_state_dict(torch.load("mnist_cnn.pth", map_location=torch.device("cpu")))
+model.load_state_dict(torch.load("mnist_cnn.pth", map_location="cpu"))
 model.eval()
 
-
-# Streamlit UI
+# UI
 st.title("Handwritten Digit Recognition")
-st.write("Upload a handwritten digit image (0-9)")
 
-uploaded_file = st.file_uploader("Upload Image", type=["png","jpg","jpeg"])
+uploaded_file = st.file_uploader("Upload a digit image", type=["png","jpg","jpeg"])
 
 if uploaded_file is not None:
 
-    # Load image
     image = Image.open(uploaded_file).convert("L")
 
-    st.image(image, caption="Uploaded Image", width=200)
-
-    # Convert to numpy
     img = np.array(image)
 
-    # Resize to MNIST size
-    img = cv2.resize(img, (28,28), interpolation=cv2.INTER_AREA)
+    # threshold
+    _, img = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY_INV)
 
-    # Invert if background is white
-    if np.mean(img) > 127:
-        img = 255 - img
+    # crop digit
+    coords = cv2.findNonZero(img)
+    x,y,w,h = cv2.boundingRect(coords)
+    img = img[y:y+h, x:x+w]
 
-    # Normalize like training
+    # resize digit
+    img = cv2.resize(img, (20,20))
+
+    # create canvas
+    canvas = np.zeros((28,28))
+    canvas[4:24,4:24] = img
+
+    img = canvas
+
+    # normalize
     img = img / 255.0
     img = (img - 0.5) / 0.5
 
-    # Show processed image
-    st.image(img, caption="Processed Image (28x28)", width=150)
-
-    # Convert to tensor
     img = torch.tensor(img).unsqueeze(0).unsqueeze(0).float()
 
-    # Prediction
+    # prediction
     with torch.no_grad():
-        outputs = model(img)
-        probabilities = torch.softmax(outputs, dim=1)
-        _, predicted = torch.max(outputs,1)
+        output = model(img)
+        pred = torch.argmax(output, dim=1)
 
-    # Show result
-    st.success(f"Predicted Digit: {predicted.item()}")
-
-    st.subheader("Prediction Probabilities")
-    probs = probabilities.numpy()[0]
-
-    for i,p in enumerate(probs):
-        st.write(f"{i} : {p:.4f}")
-
-    st.bar_chart(probs)
+    st.success(f"Predicted Digit: {pred.item()}")
