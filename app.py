@@ -42,7 +42,8 @@ model = CNN()
 model.load_state_dict(torch.load("mnist_cnn.pth", map_location="cpu"))
 model.eval()
 
-# UI
+
+# Streamlit UI
 st.title("Handwritten Digit Recognition")
 
 uploaded_file = st.file_uploader("Upload a digit image", type=["png","jpg","jpeg"])
@@ -50,6 +51,9 @@ uploaded_file = st.file_uploader("Upload a digit image", type=["png","jpg","jpeg
 if uploaded_file is not None:
 
     image = Image.open(uploaded_file).convert("L")
+
+    # Show uploaded image
+    st.image(image, caption="Uploaded Image", width=200)
 
     img = np.array(image)
 
@@ -61,13 +65,12 @@ if uploaded_file is not None:
     x,y,w,h = cv2.boundingRect(coords)
     img = img[y:y+h, x:x+w]
 
-    # resize digit
+    # resize
     img = cv2.resize(img, (20,20))
 
-    # create canvas
+    # create MNIST canvas
     canvas = np.zeros((28,28))
     canvas[4:24,4:24] = img
-
     img = canvas
 
     # normalize
@@ -81,4 +84,4 @@ if uploaded_file is not None:
         output = model(img)
         pred = torch.argmax(output, dim=1)
 
-    st.success(f"Predicted Digit: {pred.item()}")
+    st.subheader(f"Predicted Digit: {pred.item()}")
