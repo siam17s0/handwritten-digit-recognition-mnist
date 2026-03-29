@@ -53,7 +53,7 @@ Input (28x28)
 ↓
 Reshape (sequence)
 ↓
-LSTM / SimpleRNN
+RNN
 ↓
 Dense
 ↓
